@@ -29,19 +29,22 @@ def get_authorized():
     session = requests.Session()
     payload = {'login': config.LOGIN, 'password': config.PASSWORD}
     session.headers['user-Agent'] = config.USER_AGENT
-    response = session.post(config.AUTH_PAGE, json=payload)
+    session.post(config.AUTH_PAGE, json=payload)
+    response = session.get(config.TASKS_PAGE.format(0))
     if response.status_code == 200:
-        with open('data/cookies.json', 'w') as file:
+        with open(config.COOKIES, 'w') as file:
             json.dump(requests.utils.dict_from_cookiejar(session.cookies), file)
         print("Successfully logged in and created cookies!")
         return session
+    else:
+        print("Unsuccessful authorization attempt!")
 
 
 def create_session():
-    if os.path.isfile('data/cookies.json'):
+    if os.path.exists(config.COOKIES):
         session = requests.Session()
         session.headers['user-Agent'] = config.USER_AGENT
-        with open('data/cookies.json') as file:
+        with open(config.COOKIES) as file:
             cookies = json.load(file)
             session.cookies.update(cookies)
             response = session.get(config.TASKS_PAGE.format(0))
@@ -59,8 +62,8 @@ def create_session():
 
 
 def get_correct_date(date: str) -> str:
-    new_date_utc3 = dt.fromisoformat(date) + datetime.timedelta(hours=3)
-    return new_date_utc3.strftime("%d.%m.%Y %H:%M")
+    correct_date = dt.fromisoformat(date) + datetime.timedelta(hours=3)
+    return correct_date.strftime("%d.%m.%Y %H:%M")
 
 
 def get_tasks(session, exist_tasks_id):
@@ -68,16 +71,14 @@ def get_tasks(session, exist_tasks_id):
         tasks_data = dict()
         offset = 0
         response: dict = json.loads(session.get(config.TASKS_PAGE.format(offset)).text)
-        with open('data/tasks.json', 'w', encoding='utf8') as file:
-            json.dump(response, file, ensure_ascii=False)
         tasks_quantity: int = response.get('totalCount')
-        print(f'\nFounded: {tasks_quantity} tasks')
+        print(f'\nFound: {tasks_quantity} tasks')
         while offset < tasks_quantity:
             cur_time = dt.now().strftime("%Y-%m-%d %H:%M:%S")
             tasks: list = response.get('data')
             for task in tqdm(tasks, desc=f'Parsing was started at {cur_time}', unit=' task'):
                 task_id = task.get('Id')
-                task_link = ''.join((config.LINK.format(task_id)))
+                task_link = config.LINK.format(task_id)
                 task_deadline = get_correct_date(task.get('PlannedCompletionDate'))  # '2023-05-17T10:00:00.0000000Z'
                 tasks_data[task_id] = {'id': task_id, 'link': task_link, 'deadline': task_deadline}
             offset += 100
