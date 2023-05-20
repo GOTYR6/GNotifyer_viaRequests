@@ -128,7 +128,7 @@ def start_notifyer(timeout: int):
     bot.send_message(chat_id=config.CHAT_ID, text='Notifyer has been stopped⛔️')
 
 
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start'], func=lambda message: message.chat.id in config.ALLOW_CHAT_ID)
 def welcome(message: types.Message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     startup = types.KeyboardButton('Start notifyer')
@@ -139,7 +139,7 @@ def welcome(message: types.Message):
     bot.send_message(message.chat.id, 'Welcome! How can I help you?👋', reply_markup=markup)
 
 
-@bot.message_handler(regexp='Start notifyer')
+@bot.message_handler(regexp='Start notifyer', func=lambda message: message.chat.id in config.ALLOW_CHAT_ID)
 def remote_startup(message: types.Message):
     if event.is_set() and message.chat.id in config.ALLOW_CHAT_ID:
         event.clear()
@@ -149,7 +149,7 @@ def remote_startup(message: types.Message):
         return bot.send_message(message.chat.id, 'Notifyer is already running!👌')
 
 
-@bot.message_handler(regexp='Shut down notifyer')
+@bot.message_handler(regexp='Shut down notifyer', func=lambda message: message.chat.id in config.ALLOW_CHAT_ID)
 def remote_shutdown(message: types.Message):
     if not event.is_set() and message.chat.id in config.ALLOW_CHAT_ID:
         return event.set()
@@ -157,27 +157,25 @@ def remote_shutdown(message: types.Message):
         return bot.send_message(message.chat.id, 'Notifyer is already has been stopped!✋')
 
 
-@bot.message_handler(regexp='Take screenshot')
+@bot.message_handler(regexp='Take screenshot', func=lambda message: message.chat.id in config.ALLOW_CHAT_ID)
 def screenshot(message: types.Message):
-    if message.chat.id in config.ALLOW_CHAT_ID:
-        path = tempfile.gettempdir() + 'screenshot.png'
-        ImageGrab.grab().save(path, 'PNG')
-        return bot.send_document(message.chat.id, open(path, 'rb'))
+    path = tempfile.gettempdir() + 'screenshot.png'
+    ImageGrab.grab().save(path, 'PNG')
+    return bot.send_document(message.chat.id, open(path, 'rb'))
 
 
-@bot.message_handler(regexp='Turn off PC')
+@bot.message_handler(regexp='Turn off PC', func=lambda message: message.chat.id in config.ALLOW_CHAT_ID)
 def confirm_turnoff(message: types.Message):
-    if message.chat.id in config.ALLOW_CHAT_ID:
-        markup = types.InlineKeyboardMarkup(row_width=2)
-        confirm = types.InlineKeyboardButton('Yes', callback_data='confirm')
-        decline = types.InlineKeyboardButton('No', callback_data='decline')
-        markup.add(confirm, decline)
-        if event.is_set():
-            return bot.send_message(message.chat.id, 'Are you sure you want to turn off your PC?', reply_markup=markup)
-        if not event.is_set():
-            return bot.send_message(message.chat.id,
-                                    'Warning! Notifyer is still in progress, do you still want to turn off your PC?',
-                                    reply_markup=markup)
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    confirm = types.InlineKeyboardButton('Yes', callback_data='confirm')
+    decline = types.InlineKeyboardButton('No', callback_data='decline')
+    markup.add(confirm, decline)
+    if event.is_set():
+        return bot.send_message(message.chat.id, 'Are you sure you want to turn off your PC?', reply_markup=markup)
+    if not event.is_set():
+        return bot.send_message(message.chat.id,
+                                'Warning! Notifyer is still in progress, do you still want to turn off your PC?',
+                                reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: True)
