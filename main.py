@@ -32,6 +32,8 @@ def get_authorized():
     session.post(config.AUTH_PAGE, json=payload)
     response = session.get(config.TASKS_PAGE.format(0))
     if response.status_code == 200:
+        if not os.path.exists("data/"):
+            os.mkdir("data/")
         with open(config.COOKIES, 'w') as file:
             json.dump(requests.utils.dict_from_cookiejar(session.cookies), file)
         print("Successfully logged in and created cookies!")
