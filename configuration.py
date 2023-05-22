@@ -16,8 +16,10 @@ class Config:
             self.DRIVER_TIMEOUT = default_config['DRIVER_TIMEOUT']
             self.REMIND_TIMEOUT = default_config['REMIND_TIMEOUT']
             self.TOKEN = default_config['TOKEN']
+            self.ADMIN_ID = default_config['ADMIN_ID']
             self.ALLOW_CHAT_ID = default_config['ALLOW_CHAT_ID']
-            self.CHAT_ID = default_config['CHAT_ID']
+            self.CURR_CHAT_ID = default_config['CURR_CHAT_ID']
+            self.CONTENT_TYPES = default_config['CONTENT_TYPES']
             self.LINK = default_config['LINK']
         except FileNotFoundError:
             raise Exception('Config file config/default_config.json is missing')

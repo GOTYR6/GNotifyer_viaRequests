@@ -109,7 +109,8 @@ def start_notifyer(timeout: int):
     exist_tasks_id = set()
     remind_time = time.time()
     session = create_session()
-    bot.send_message(chat_id=config.CHAT_ID, text='Notifyer is running, you will be notified about new tasks asap👍')
+    bot.send_message(chat_id=config.CURR_CHAT_ID,
+                     text='Notifyer is running, you will be notified about new tasks asap👍')
     while not event.is_set():
         try:
             exist_tasks_id, new_tasks = get_tasks(session, exist_tasks_id)
@@ -118,16 +119,16 @@ def start_notifyer(timeout: int):
                 message = f'Количество новых задач: {len(new_tasks)}\n'
                 for index, task in enumerate(new_tasks, start=1):
                     message += f"{index}) [{task.get('id')}]({task.get('link')}) Крайний срок: {task.get('deadline')}\n"
-                bot.send_message(chat_id=config.CHAT_ID, text=message, parse_mode='Markdown')
+                bot.send_message(chat_id=config.CURR_CHAT_ID, text=message, parse_mode='Markdown')
             if time.time() - remind_time > config.REMIND_TIMEOUT and not event.is_set():
-                bot.send_message(chat_id=config.CHAT_ID, text='Notifyer is still in progress!')
+                bot.send_message(chat_id=config.CURR_CHAT_ID, text='Notifyer is still in progress!')
                 remind_time = time.time()
             event.wait(timeout + randrange(timeout))
         except KeyboardInterrupt:
             print('Parsing has been stopped')
         except (Exception,):
             continue
-    bot.send_message(chat_id=config.CHAT_ID, text='Notifyer has been stopped⛔️')
+    bot.send_message(chat_id=config.CURR_CHAT_ID, text='Notifyer has been stopped⛔️')
 
 
 @bot.message_handler(commands=['start'], func=lambda message: message.chat.id in config.ALLOW_CHAT_ID)
@@ -135,28 +136,45 @@ def welcome(message: types.Message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     startup = types.KeyboardButton('Start notifyer')
     shutdown = types.KeyboardButton('Shut down notifyer')
+    status = types.KeyboardButton('Notifyer status')
     screen = types.KeyboardButton('Take screenshot')
     turnoff = types.KeyboardButton('Turn off PC')
-    markup.add(startup, shutdown, screen, turnoff)
+    markup.add(startup, shutdown, status, screen, turnoff)
     bot.send_message(message.chat.id, 'Welcome! How can I help you?👋', reply_markup=markup)
+
+
+@bot.message_handler(content_types=config.CONTENT_TYPES,
+                     func=lambda message: message.chat.id not in config.ALLOW_CHAT_ID)
+def not_allowed_user(message: types.Message):
+    bot.send_message(chat_id=config.ADMIN_ID, text=f'User nickname: {message.chat.username}, chat ID: {message.chat.id}'
+                                                   f' was trying to use this bot! Message he send:')
+    bot.forward_message(chat_id=config.ADMIN_ID, from_chat_id=message.chat.id, message_id=message.message_id)
 
 
 @bot.message_handler(regexp='Start notifyer', func=lambda message: message.chat.id in config.ALLOW_CHAT_ID)
 def remote_startup(message: types.Message):
-    if event.is_set() and message.chat.id in config.ALLOW_CHAT_ID:
+    if event.is_set():
         event.clear()
-        config.CHAT_ID = message.chat.id
+        config.CURR_CHAT_ID = message.chat.id
         return start_notifyer(timeout=config.NOTIFYER_TIMEOUT)
-    if not event.is_set() and message.chat.id in config.ALLOW_CHAT_ID:
+    if not event.is_set():
         return bot.send_message(message.chat.id, 'Notifyer is already running!👌')
 
 
 @bot.message_handler(regexp='Shut down notifyer', func=lambda message: message.chat.id in config.ALLOW_CHAT_ID)
 def remote_shutdown(message: types.Message):
-    if not event.is_set() and message.chat.id in config.ALLOW_CHAT_ID:
+    if not event.is_set():
         return event.set()
-    if event.is_set() and message.chat.id in config.ALLOW_CHAT_ID:
+    if event.is_set():
         return bot.send_message(message.chat.id, 'Notifyer is already has been stopped!✋')
+
+
+@bot.message_handler(regexp='Notifyer status', func=lambda message: message.chat.id in config.ALLOW_CHAT_ID)
+def notifyer_status(message: types.Message):
+    if event.is_set():
+        return bot.send_message(message.chat.id, 'Notifyer is stopped✋')
+    if not event.is_set():
+        return bot.send_message(message.chat.id, 'Notifyer is running👌')
 
 
 @bot.message_handler(regexp='Take screenshot', func=lambda message: message.chat.id in config.ALLOW_CHAT_ID)
