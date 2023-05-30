@@ -205,7 +205,7 @@ def handle_inline(call):
             if call.data == 'confirm':
                 bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                       text='Turning off your PC🖥🔌', reply_markup=None)
-                return os.system("shutdown -s -t 0")
+                return os.system("shutdown -s -t 10")
             if call.data == 'decline':
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
                 return bot.answer_callback_query(call.id, 'You canceled the PC shutdown❌')
